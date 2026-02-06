@@ -3,27 +3,65 @@ import cv2
 import numpy as np
 from PIL import Image
 
-PAINT_DROP_SIZE = 16 #mm^2
-FEED_RATE = 10
-FLOW_RATE = 5 # needs flow mapped to movement in mm (based on how far it moves per rotation and how much flows out per rotation)
-SHEET_SIZE = "A0"
+PAINT_DROP_SIZE = 30 #mm^2
+FEED_RATE = 400
+FLOW_RATE = 200
+FLOW_STEP = 2 #mm
+DROPLETS = 3 #number of droplets deposited per dot
+DELAY = 0.01 #delay between droplet deposition (seconds)
+SHEET_SIZE = "A2"
 IMAGE = "test_image15.jpg"
+BASE_COLOR = True
+BASE_COLOR_VALUES = [255, 255, 255]
 WRITE = False
 
-# TODO incorporate using multiple colors (remove G-Code coloring the whole sheet)
+# TODO Make program pull colors from image and present them as suggestions
 # NOTE posters, comics and playing cards work really well
-# TODO add display for final colors (allow user to see what output will be like)
 
 def get_sheet_dimensions(sheet_size):
     if sheet_size == "A0":
         x = 841 #mm
         y = 1190 #mm
+    if sheet_size == "A1":
+        x = 841 #mm
+        y = 594 #mm
+    if sheet_size == "A2":
+        x = 420 #mm
+        y = 594 #mm
+    if sheet_size == "A3":
+        x = 420 #mm
+        y = 297 #mm
+    if sheet_size == "A4":
+        x = 210 #mm
+        y = 297 #mm
+    if sheet_size == "A5":
+        x = 210 #mm
+        y = 148 #mm
+    if sheet_size == "A6":
+        x = 105 #mm
+        y = 148 #mm
+    if sheet_size == "A7":
+        x = 105 #mm
+        y = 74 #mm
     
     return x, y
 
+def color_search(image, num_colors):
+    found_colors = []
+    for y in range(len(image)):
+        for x in range(len(image[y])):
+            if num_colors == len(found_colors):
+                return sorted(found_colors)
+            if image[y][x] not in found_colors:
+                found_colors.append(int(image[y][x]))
+    return sorted(found_colors)
+
 def rotate(input_image):
     # if width is greater than length, rotate 90 degrees, otherwise, return input image as is
-    if input_image.shape[1] > input_image.shape[0]:
+    if (input_image.shape[1] > input_image.shape[0]) and (int(SHEET_SIZE[-1])%2) == 0:
+        return cv2.rotate(input_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
+    
+    elif (input_image.shape[0] > input_image.shape[1]) and (int(SHEET_SIZE[-1])%2) != 0:
         return cv2.rotate(input_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
     else:
@@ -93,8 +131,8 @@ def separate_colors(image, num_colors):
     return None
 
 
-# make color separation relative to colors in image (maybe relative to overall average grayscale color value)
 def separate_colors_grayscale(image, shape):
+    #global BASE_COLOR
     # convert from array to PIL image
     gray_image = Image.fromarray(image)
     # convert to grayscale
@@ -115,24 +153,82 @@ def separate_colors_grayscale(image, shape):
         color_val = 255 - average_color
     else:
         color_val = 255
-        
-    for i in gray_image:
-        if i >= int(color_val*2/3):
-            processed_image_list.append(int(255))
-        elif int(color_val/3) <= i < int(color_val*2/3):
-            processed_image_list.append(int(color_val/2))
-        else:
-            processed_image_list.append(int(0))
+    
+    if BASE_COLOR == False:
+        # split colors into 3
+        for i in gray_image:
+            if i >= int(color_val*2/3):
+                processed_image_list.append(int(255))
 
-    # conver to array
+            elif int(color_val/3) <= i < int(color_val*2/3):
+                processed_image_list.append(int(color_val/2))
+
+            else:
+                processed_image_list.append(int(0))
+    else:
+        # split colors into 4
+        for i in gray_image:
+            if i >= int(color_val*3/4):
+                processed_image_list.append(int(255))# maybe append "base" and then have gcode writer and color preview read it with special instructions
+                
+            elif int(color_val/2) <= i < int(color_val*3/4):
+                processed_image_list.append(int(color_val*2/3))
+
+            elif int(color_val/4) <= i < int(color_val/2):
+                processed_image_list.append(int(color_val/3))
+
+            else:
+                processed_image_list.append(int(0))
+
+    # convert to array
     output_image = np.array(processed_image_list).T
     # reshape image
     output_image = output_image.reshape(shape)
 
     return output_image
 
-def preview_colors(color1, color2, color3, base_color):
-    return None
+def preview_colors(image, color1, color2, color3, base_color):
+    if base_color == "NA":
+        # create an array of pixel colors [color, color, color]
+        pixels = []
+        # retireve colors found in image
+        image_colors = color_search(image, 3)
+        for y in range(len(image)):
+            pixel_row = []
+            for x in range(len(image[y])):
+                # light colors are painted last
+                if image[y][x] == image_colors[2]:
+                    color = color3
+                # darker colors are painted first
+                elif image[y][x] == image_colors[0]:
+                    color = color1
+                else:
+                    color = color2
+                pixel_row.append(color)
+            pixels.append(pixel_row)
+        numpy_array = np.array(pixels, dtype=np.uint8)
+    else:
+        # create an array of pixel colors [color, color, color]
+        pixels = []
+        # retireve colors found in image
+        image_colors = color_search(image, 4)
+        for y in range(len(image)):
+            pixel_row = []
+            for x in range(len(image[y])):
+                # light colors are painted last
+                if image[y][x] == image_colors[3]:
+                    color = base_color
+                elif image[y][x] == image_colors[2]:
+                    color = color3
+                # darker colors are painted first
+                elif image[y][x] == image_colors[0]:
+                    color = color1
+                else:
+                    color = color2
+                pixel_row.append(color)
+            pixels.append(pixel_row)
+        numpy_array = np.array(pixels, dtype=np.uint8)
+    return numpy_array
 
 
 def write_Gcode(image):
@@ -160,19 +256,45 @@ def write_Gcode(image):
     string3 = ''
     z_pseudo_location = 0
     for y in range(len(pixels)):
-        gcode = "G90 ; absolute distance mode\nG21 ; set millimeters\nG1 X0 Y0 F%s\n" % FEED_RATE
+        gcode = "G90 ; absolute distance mode\nG21 ; set millimeters\nG17 ; XY Plane\nG94 ; Units per Minute Feed Rate Mode\nG1 X0 Y0\nG92 Z0 ; zero the z axis\n"
 
         for x in range(len(pixels[y])):
-            z_pseudo_location += FLOW_RATE
+            z_pseudo_location += FLOW_STEP
 
             if (y%2) != 0:
                 x = len(pixels[y])- 1 - x
             if pixels[y][x][2] == 1:
-                string1 += "X%s Y%s Z%s\n" % (pixels[y][x][0], pixels[y][x][1], z_pseudo_location)
+                string1 += "F%s\n" % (FEED_RATE)
+                string1 += "X%s Y%s\n" % (pixels[y][x][0], pixels[y][x][1])
+                string1 += "F%s\n" % (FLOW_RATE)
+                for i in range(DROPLETS-1):
+                    string1 += "Z%s\n" % (z_pseudo_location)
+                    string1 += "G4 P%s\n" % (DELAY)
+                    z_pseudo_location += FLOW_STEP
+                string1 += "Z%s\n" % (z_pseudo_location)
+
             elif pixels[y][x][2] == 2:
-                string2 += "X%s Y%s Z%s\n" % (pixels[y][x][0], pixels[y][x][1], z_pseudo_location)
+                '''string2 += "X%s Y%s Z%s\n" % (pixels[y][x][0], pixels[y][x][1],z_pseudo_location)
+                string2 += "X%s Y%s Z%s\n" % (pixels[y][x][0], pixels[y][x][1], z_pseudo_location)'''
+                string1 += "F%s\n" % (FEED_RATE)
+                string1 += "X%s Y%s\n" % (pixels[y][x][0], pixels[y][x][1])
+                string1 += "F%s\n" % (FLOW_RATE)
+                for i in range(DROPLETS-1):
+                    string1 += "Z%s\n" % (z_pseudo_location)
+                    string1 += "G4 P%s\n" % (DELAY)
+                    z_pseudo_location += FLOW_STEP
+                string1 += "Z%s\n" % (z_pseudo_location)
             elif pixels[y][x][2] == 3:
-                string3 += "X%s Y%s Z%s\n" % (pixels[y][x][0], pixels[y][x][1], z_pseudo_location)
+                '''string3 += "X%s Y%s Z%s\n" % (pixels[y][x][0], pixels[y][x][1],z_pseudo_location)
+                string3 += "X%s Y%s Z%s\n" % (pixels[y][x][0], pixels[y][x][1], z_pseudo_location)'''
+                string1 += "F%s\n" % (FEED_RATE)
+                string1 += "X%s Y%s\n" % (pixels[y][x][0], pixels[y][x][1])
+                string1 += "F%s\n" % (FLOW_RATE)
+                for i in range(DROPLETS-1):
+                    string1 += "Z%s\n" % (z_pseudo_location)
+                    string1 += "G4 P%s\n" % (DELAY)
+                    z_pseudo_location += FLOW_STEP
+                string1 += "Z%s\n" % (z_pseudo_location)
         
         gcode += string1
         #gcode += "Z40\n" # to simulate color change
@@ -191,6 +313,7 @@ def main():
     input_image = rotate(input_image)
     # convert to grayscale
     image = separate_colors_grayscale(input_image, (input_image.shape[0], input_image.shape[1]))
+    print(image.shape)
     # crompress image
     image = compress_image(image)
     # crop image
@@ -202,6 +325,8 @@ def main():
         output_file.write(gcode)
         output_file.close()
     # display image
+    image = preview_colors(image, [0, 0, 0], [255, 0, 0], [0, 0, 255], BASE_COLOR_VALUES)
+    image = cv2.resize(image, (400, 600))
     cv2.imshow("Processed Image", cv2.convertScaleAbs(image))
     cv2.waitKey(0)
     cv2.destroyAllWindows()
