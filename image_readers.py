@@ -9,11 +9,11 @@ FLOW_RATE = 200
 FLOW_STEP = 2 #mm
 DROPLETS = 3 #number of droplets deposited per dot
 DELAY = 0.01 #delay between droplet deposition (seconds)
-SHEET_SIZE = "A2"
+SHEET_SIZE = "A0"
 IMAGE = "test_image15.jpg"
 BASE_COLOR = True
 BASE_COLOR_VALUES = [255, 255, 255]
-WRITE = False
+WRITE = True
 
 # TODO Make program pull colors from image and present them as suggestions
 # NOTE posters, comics and playing cards work really well
@@ -256,7 +256,7 @@ def write_Gcode(image):
     string3 = ''
     z_pseudo_location = 0
     for y in range(len(pixels)):
-        gcode = "G90 ; absolute distance mode\nG21 ; set millimeters\nG17 ; XY Plane\nG94 ; Units per Minute Feed Rate Mode\nG1 X0 Y0\nG92 Z0 ; zero the z axis\n"
+        gcode = "G90 ; absolute distance mode\nG21 ; set millimeters\nG17 ; XY Plane\nG94 ; Units per Minute Feed Rate Mode\nG1 X0 Y0\nG92 Z0 ; zero the z axis\n\n"
 
         for x in range(len(pixels[y])):
             z_pseudo_location += FLOW_STEP
@@ -265,36 +265,32 @@ def write_Gcode(image):
                 x = len(pixels[y])- 1 - x
             if pixels[y][x][2] == 1:
                 string1 += "F%s\n" % (FEED_RATE)
-                string1 += "X%s Y%s\n" % (pixels[y][x][0], pixels[y][x][1])
+                string1 += "G0 X%s Y%s\n" % (pixels[y][x][0], pixels[y][x][1])
                 string1 += "F%s\n" % (FLOW_RATE)
                 for i in range(DROPLETS-1):
-                    string1 += "Z%s\n" % (z_pseudo_location)
+                    string1 += "G0 Z%s\n" % (z_pseudo_location)
                     string1 += "G4 P%s\n" % (DELAY)
                     z_pseudo_location += FLOW_STEP
-                string1 += "Z%s\n" % (z_pseudo_location)
+                string1 += "G0 Z%s\n" % (z_pseudo_location)
 
             elif pixels[y][x][2] == 2:
-                '''string2 += "X%s Y%s Z%s\n" % (pixels[y][x][0], pixels[y][x][1],z_pseudo_location)
-                string2 += "X%s Y%s Z%s\n" % (pixels[y][x][0], pixels[y][x][1], z_pseudo_location)'''
-                string1 += "F%s\n" % (FEED_RATE)
-                string1 += "X%s Y%s\n" % (pixels[y][x][0], pixels[y][x][1])
-                string1 += "F%s\n" % (FLOW_RATE)
+                string2 += "F%s\n" % (FEED_RATE)
+                string2 += "G0 X%s Y%s\n" % (pixels[y][x][0], pixels[y][x][1])
+                string2 += "F%s\n" % (FLOW_RATE)
                 for i in range(DROPLETS-1):
-                    string1 += "Z%s\n" % (z_pseudo_location)
-                    string1 += "G4 P%s\n" % (DELAY)
+                    string2 += "G0 Z%s\n" % (z_pseudo_location)
+                    string2 += "G4 P%s\n" % (DELAY)
                     z_pseudo_location += FLOW_STEP
-                string1 += "Z%s\n" % (z_pseudo_location)
+                string2 += "G0 Z%s\n" % (z_pseudo_location)
             elif pixels[y][x][2] == 3:
-                '''string3 += "X%s Y%s Z%s\n" % (pixels[y][x][0], pixels[y][x][1],z_pseudo_location)
-                string3 += "X%s Y%s Z%s\n" % (pixels[y][x][0], pixels[y][x][1], z_pseudo_location)'''
-                string1 += "F%s\n" % (FEED_RATE)
-                string1 += "X%s Y%s\n" % (pixels[y][x][0], pixels[y][x][1])
-                string1 += "F%s\n" % (FLOW_RATE)
+                string3 += "F%s\n" % (FEED_RATE)
+                string3 += "G0 X%s Y%s\n" % (pixels[y][x][0], pixels[y][x][1])
+                string3 += "F%s\n" % (FLOW_RATE)
                 for i in range(DROPLETS-1):
-                    string1 += "Z%s\n" % (z_pseudo_location)
-                    string1 += "G4 P%s\n" % (DELAY)
+                    string3 += "G0 Z%s\n" % (z_pseudo_location)
+                    string3 += "G4 P%s\n" % (DELAY)
                     z_pseudo_location += FLOW_STEP
-                string1 += "Z%s\n" % (z_pseudo_location)
+                string3 += "G0 Z%s\n" % (z_pseudo_location)
         
         gcode += string1
         #gcode += "Z40\n" # to simulate color change
