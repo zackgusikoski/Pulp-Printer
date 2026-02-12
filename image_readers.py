@@ -293,11 +293,13 @@ def write_Gcode(image):
                 string3 += "G0 Z%s\n" % (z_pseudo_location)
         
         gcode += string1
-        #gcode += "Z40\n" # to simulate color change
+        #M8 is coolant flood on
         gcode += string2
-        #gcode += "Z80\n" # to simulate color change
+        #M3 is spindle on clockwise
         gcode += string3
     
+    gcode += "M5\n" # spindle off
+    gcode += "M09\n" # coolant off
     gcode += "M2"
 
     return gcode
