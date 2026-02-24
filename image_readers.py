@@ -3,17 +3,17 @@ import cv2
 import numpy as np
 from PIL import Image
 
-PAINT_DROP_SIZE = 30 #mm^2
+PAINT_DROP_SIZE = 15 #mm^2
 FEED_RATE = 400
 FLOW_RATE = 200
 FLOW_STEP = 2 #mm
 DROPLETS = 3 #number of droplets deposited per dot
 DELAY = 0.01 #delay between droplet deposition (seconds)
-SHEET_SIZE = "A0"
+SHEET_SIZE = "A2"
 IMAGE = "test_image15.jpg"
-BASE_COLOR = True
+BASE_COLOR = "NA"
 BASE_COLOR_VALUES = [255, 255, 255]
-WRITE = True
+WRITE = False
 
 # TODO Make program pull colors from image and present them as suggestions
 # NOTE posters, comics and playing cards work really well
@@ -165,11 +165,12 @@ def separate_colors_grayscale(image, shape):
 
             else:
                 processed_image_list.append(int(0))
+
     else:
         # split colors into 4
         for i in gray_image:
             if i >= int(color_val*3/4):
-                processed_image_list.append(int(255))# maybe append "base" and then have gcode writer and color preview read it with special instructions
+                processed_image_list.append(int(255))
                 
             elif int(color_val/2) <= i < int(color_val*3/4):
                 processed_image_list.append(int(color_val*2/3))
@@ -250,52 +251,81 @@ def write_Gcode(image):
             pixel_row.append([(scaling_factor*x)+scaling_factor, (scaling_factor*y)+scaling_factor, color])
         pixels.append(pixel_row)
 
+    # count number of each colors (for setting flow steps in correct order (0-some number))
+    count_1 = 0
+    count_2 = 0
+    for y in range(len(pixels)):
+        for x in range(len(pixels[y])):
+            if pixels[y][x][2] == 1:
+                count_1 += 1
+            elif pixels[y][x][2] == 2:
+                count_2 += 1
+
     # generate Gcode
     string1 = ''
     string2 = ''
     string3 = ''
-    z_pseudo_location = 0
+    z_pseudo_location_1 = 0
+    z_pseudo_location_2 = FLOW_STEP*DROPLETS*count_1
+    z_pseudo_location_3 = z_pseudo_location_2 + (FLOW_STEP*DROPLETS*count_2)
     for y in range(len(pixels)):
         gcode = "G90 ; absolute distance mode\nG21 ; set millimeters\nG17 ; XY Plane\nG94 ; Units per Minute Feed Rate Mode\nG1 X0 Y0\nG92 Z0 ; zero the z axis\n\n"
 
         for x in range(len(pixels[y])):
-            z_pseudo_location += FLOW_STEP
 
             if (y%2) != 0:
                 x = len(pixels[y])- 1 - x
+
             if pixels[y][x][2] == 1:
+                z_pseudo_location_1 += FLOW_STEP
                 string1 += "F%s\n" % (FEED_RATE)
                 string1 += "G0 X%s Y%s\n" % (pixels[y][x][0], pixels[y][x][1])
                 string1 += "F%s\n" % (FLOW_RATE)
-                for i in range(DROPLETS-1):
-                    string1 += "G0 Z%s\n" % (z_pseudo_location)
-                    string1 += "G4 P%s\n" % (DELAY)
-                    z_pseudo_location += FLOW_STEP
-                string1 += "G0 Z%s\n" % (z_pseudo_location)
+                if DROPLETS > 1:
+                    for i in range(DROPLETS-1):
+                        string1 += "G0 Z%s\n" % (z_pseudo_location_1)
+                        string1 += "G4 P%s\n" % (DELAY)
+                        z_pseudo_location_1 += FLOW_STEP
+                    string1 += "G0 Z%s\n" % (z_pseudo_location_1)
+                else:
+                    z_pseudo_location_1 += FLOW_STEP
+                    string1 += "G0 Z%s\n" % (z_pseudo_location_1)
 
             elif pixels[y][x][2] == 2:
+                z_pseudo_location_2 += FLOW_STEP
                 string2 += "F%s\n" % (FEED_RATE)
                 string2 += "G0 X%s Y%s\n" % (pixels[y][x][0], pixels[y][x][1])
                 string2 += "F%s\n" % (FLOW_RATE)
-                for i in range(DROPLETS-1):
-                    string2 += "G0 Z%s\n" % (z_pseudo_location)
-                    string2 += "G4 P%s\n" % (DELAY)
-                    z_pseudo_location += FLOW_STEP
-                string2 += "G0 Z%s\n" % (z_pseudo_location)
+                if DROPLETS > 1:
+                    for i in range(DROPLETS-1):
+                        string2 += "G0 Z%s\n" % (z_pseudo_location_2)
+                        string2 += "G4 P%s\n" % (DELAY)
+                        z_pseudo_location_2 += FLOW_STEP
+                    string2 += "G0 Z%s\n" % (z_pseudo_location_2)
+                else:
+                    # adds all steps needed for color 1
+                    z_pseudo_location_2 += FLOW_STEP
+                    string2 += "G0 Z%s\n" % (z_pseudo_location_2)
+
             elif pixels[y][x][2] == 3:
+                z_pseudo_location_3 += FLOW_STEP
                 string3 += "F%s\n" % (FEED_RATE)
                 string3 += "G0 X%s Y%s\n" % (pixels[y][x][0], pixels[y][x][1])
                 string3 += "F%s\n" % (FLOW_RATE)
-                for i in range(DROPLETS-1):
-                    string3 += "G0 Z%s\n" % (z_pseudo_location)
-                    string3 += "G4 P%s\n" % (DELAY)
-                    z_pseudo_location += FLOW_STEP
-                string3 += "G0 Z%s\n" % (z_pseudo_location)
+                if DROPLETS > 1:
+                    for i in range(DROPLETS-1):
+                        string3 += "G0 Z%s\n" % (z_pseudo_location_3)
+                        string3 += "G4 P%s\n" % (DELAY)
+                        z_pseudo_location_3 += FLOW_STEP
+                    string3 += "G0 Z%s\n" % (z_pseudo_location_3)
+                else:
+                    z_pseudo_location_3 += FLOW_STEP
+                    string3 += "G0 Z%s\n" % (z_pseudo_location_3)
         
         gcode += string1
-        #M8 is coolant flood on
+        gcode += "M8\n"#M8 is coolant flood on
         gcode += string2
-        #M3 is spindle on clockwise
+        gcode += "M3\n"#M3 is spindle on clockwise
         gcode += string3
     
     gcode += "M5\n" # spindle off
@@ -324,7 +354,7 @@ def main():
         output_file.close()
     # display image
     image = preview_colors(image, [0, 0, 0], [255, 0, 0], [0, 0, 255], BASE_COLOR_VALUES)
-    image = cv2.resize(image, (400, 600))
+    image = cv2.resize(image, get_sheet_dimensions(SHEET_SIZE))
     cv2.imshow("Processed Image", cv2.convertScaleAbs(image))
     cv2.waitKey(0)
     cv2.destroyAllWindows()
