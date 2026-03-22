@@ -52,9 +52,17 @@ def preview_colors(image, color1, color2, color3, base_color):
     return numpy_array
 
 def viewer(image, color1, color2, color3, base_color, sheet_size):
+    size = 250
+    if (int(sheet_size[-1]) % 2) == 0:
+        x = size
+        y = int(x*(2**0.5))
+    else:
+        x = int(size*(2**0.5))
+        y = size
+
     # display image
     image = preview_colors(image, color1, color2, color3, base_color)
-    image = cv2.resize(image, get_sheet_dimensions(sheet_size))
+    image = cv2.resize(image, (x, y))
     cv2.imshow("Processed Image", cv2.convertScaleAbs(image))
     cv2.waitKey(0)
     cv2.destroyAllWindows()

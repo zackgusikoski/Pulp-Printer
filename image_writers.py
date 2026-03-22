@@ -59,7 +59,7 @@ def write_Gcode(image, color1, color2, color3, base_color, paint_drop_size, flow
     z_pseudo_location_2 = flow_step*droplets*count_1
     z_pseudo_location_3 = z_pseudo_location_2 + (flow_step*droplets*count_2)
     for y in range(len(pixels)):
-        gcode = "G90 ; absolute distance mode\nG21 ; set millimeters\nG17 ; XY Plane\nG94 ; Units per Minute Feed Rate Mode\nG1 X0 Y0 F400\nG92 Z0 ; zero the z axis\n\n"
+        gcode = "G90 ; absolute distance mode\nG21 ; set millimeters\nG94 ; Units per Minute Feed Rate Mode\nG1 X0 Y0 F400\nG92 Z0 ; zero the z axis\nM9\nM3 S0\n\n"
 
         for x in range(len(pixels[y])):
 
@@ -78,7 +78,6 @@ def write_Gcode(image, color1, color2, color3, base_color, paint_drop_size, flow
                         z_pseudo_location_1 += flow_step
                     string1 += "G0 Z%s\n" % (z_pseudo_location_1)
                 else:
-                    z_pseudo_location_1 += flow_step
                     string1 += "G0 Z%s\n" % (z_pseudo_location_1)
 
             elif pixels[y][x][2] == 2:
@@ -94,7 +93,6 @@ def write_Gcode(image, color1, color2, color3, base_color, paint_drop_size, flow
                     string2 += "G0 Z%s\n" % (z_pseudo_location_2)
                 else:
                     # adds all steps needed for color 1
-                    z_pseudo_location_2 += flow_step
                     string2 += "G0 Z%s\n" % (z_pseudo_location_2)
 
             elif pixels[y][x][2] == 3:
@@ -109,7 +107,6 @@ def write_Gcode(image, color1, color2, color3, base_color, paint_drop_size, flow
                         z_pseudo_location_3 += flow_step
                     string3 += "G0 Z%s\n" % (z_pseudo_location_3)
                 else:
-                    z_pseudo_location_3 += flow_step
                     string3 += "G0 Z%s\n" % (z_pseudo_location_3)
         
     # if there is a base sheet
@@ -123,14 +120,16 @@ def write_Gcode(image, color1, color2, color3, base_color, paint_drop_size, flow
 
             # only change pumps if colors are supposed to be different
             if (color1 != color2):
-                gcode += "M8\n"#M8 is coolant flood on
+                gcode += "M9\nM3 S1000\n"#M8 is coolant flood on
+                gcode += "X-10 F400\nG92 Z0\nZ15 F400\nG92 Z123\n" #add purge cycle #TODO fix purge cycle
 
             gcode += string2
 
         if color3 != base_color:
             
             if (color2 != color3) and (color1 != color3):
-                gcode += "M3\n"#M3 is spindle on clockwise
+                gcode += "M8\nM3 S1000\n"#M3 is spindle on clockwise
+                gcode += "X-10 F400\nG92 Z0\nZ15 F400\nG92 Z123\n" #add purge cycle #TODO fix purge cycle
 
             gcode += string3
 
@@ -139,15 +138,18 @@ def write_Gcode(image, color1, color2, color3, base_color, paint_drop_size, flow
         gcode += string1
 
         if color1 != color2:
-            gcode += "M8\n"#M8 is coolant flood on
+            gcode += "M9\nM3 S1000\n"#M8 is coolant flood on
+            gcode += "X-10 F400\nG92 Z0\nZ15 F400\nG92 Z123\n" #add purge cycle #TODO fix purge cycle
 
         gcode += string2
         
         if (color2 != color3) and (color1 != color3):
-            gcode += "M3\n"#M3 is spindle on clockwise
+            gcode += "M8\nM3 S1000\n"#M3 is spindle on clockwise
+            gcode += "X-10 F400\nG92 Z0\nZ15 F400\nG92 Z123\n" #add purge cycle #TODO fix purge cycle
 
         gcode += string3
     
+    gcode += "F400\nG0 X0 Y0\n"
     gcode += "M5\n" # spindle off
     gcode += "M09\n" # coolant off
     gcode += "M2"

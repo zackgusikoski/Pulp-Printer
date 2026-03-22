@@ -13,20 +13,20 @@ def visualize_dots(filename, color1, color2, color3):
     x_vals = []
     y_vals = []
     coordinates = []
-    for line in lines:
+    for line in lines[8:-4]:
         if line[:4] == 'G0 X':
             line = line[2:].replace('X', '').replace('Z', '').replace(' ', '').replace('\n', '')
             if 'Y' in line:
                 [x, y] = line.split('Y')
             x_vals.append(float(x))
             y_vals.append(float(y))
-        if (line[:2] == "M8") or (line[:2] == "M3"):
+        if line[:2] == "M3":
             coordinates.append([x_vals, y_vals])
             x_vals = []
             y_vals = []
     coordinates.append([x_vals, y_vals])
     gcode.close()
-
+    print(len(coordinates))
     for i in range(len(coordinates)):
         plt.scatter(coordinates[i][0], coordinates[i][1], color=color_list[i] , alpha=0.3)
 
@@ -56,6 +56,8 @@ def visualize_path(filename, color1, color2, color3):
             y_vals = []
     coordinates.append([x_vals, y_vals])
     gcode.close()
+
+    print(color_list)
 
     for i in range(len(coordinates)):
         plt.plot(coordinates[i][0], coordinates[i][1], color=color_list[i] , alpha=0.3)

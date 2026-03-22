@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-import math
 from tools import get_sheet_dimensions
 from PIL import Image
 
@@ -16,7 +15,7 @@ def rotate(input_image, sheet_size):
         return input_image
 
 
-def compress_image(image, sheet_size, paint_drop_size):
+def compress_image_standard(image, sheet_size, paint_drop_size):
     # get sheet dimensions
     x, y = get_sheet_dimensions(sheet_size)
 
@@ -45,6 +44,16 @@ def compress_image(image, sheet_size, paint_drop_size):
     compressed_image = np.asarray(compressed_image_list, np.uint16)
 
     return compressed_image
+
+def compress_image_cv2(image, sheet_size, paint_drop_size, interpolation):
+
+    x, y = get_sheet_dimensions(sheet_size)
+    print(image.shape, y/paint_drop_size, x/paint_drop_size)
+
+    image = cv2.resize(image, (int(x/paint_drop_size), int(y/paint_drop_size)), interpolation=interpolation)
+    print(len(image), len(image[0]))
+
+    return image
 
 def crop_image(image, sheet_size, paint_drop_size):
     # get sheet dimensions
@@ -138,13 +147,38 @@ def separate_colors_grayscale(image, shape, base_color):
 
     return output_image
 
-def processor(input_image, base_color, sheet_size: str, paint_drop_size: int):
-    # convert to grayscale
-    image = separate_colors_grayscale(input_image, (input_image.shape[0], input_image.shape[1]), base_color)
-    print(image.shape)
-    # crompress image
-    image = compress_image(image, sheet_size, paint_drop_size)
-    # crop image
-    image = crop_image(image, sheet_size, paint_drop_size)
-    print(image.shape)
+def processor(input_image, base_color, sheet_size: str, paint_drop_size: int, compression_type: str):
+    #NOTE Standard will not be in the dropdown
+    if compression_type == "Standard":
+        image = separate_colors_grayscale(input_image, (input_image.shape[0], input_image.shape[1]), base_color)
+        # crompress image
+        image = compress_image_standard(image, sheet_size, paint_drop_size)
+        # crop image
+        image = crop_image(image, sheet_size, paint_drop_size)
+
+    elif compression_type == "Linear":
+        image = compress_image_cv2(input_image, sheet_size, paint_drop_size, cv2.INTER_LINEAR)
+        # convert to grayscale
+        image = separate_colors_grayscale(image, (image.shape[0], image.shape[1]), base_color)
+    
+    elif compression_type == "Cubic":
+        image = compress_image_cv2(input_image, sheet_size, paint_drop_size, cv2.INTER_CUBIC)
+        # convert to grayscale
+        image = separate_colors_grayscale(image, (image.shape[0], image.shape[1]), base_color)
+    
+    elif compression_type == "Nearest":
+        image = compress_image_cv2(input_image, sheet_size, paint_drop_size, cv2.INTER_NEAREST)
+        # convert to grayscale
+        image = separate_colors_grayscale(image, (image.shape[0], image.shape[1]), base_color)
+    
+    elif compression_type == "Area":
+        image = compress_image_cv2(input_image, sheet_size, paint_drop_size, cv2.INTER_AREA)
+        # convert to grayscale
+        image = separate_colors_grayscale(image, (image.shape[0], image.shape[1]), base_color)
+    
+    elif compression_type == "Lanczos":
+        image = compress_image_cv2(input_image, sheet_size, paint_drop_size, cv2.INTER_LANCZOS4)
+        # convert to grayscale
+        image = separate_colors_grayscale(image, (image.shape[0], image.shape[1]), base_color)
+    
     return image
