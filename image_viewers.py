@@ -62,7 +62,8 @@ def viewer(image, color1, color2, color3, base_color, sheet_size):
 
     # display image
     image = preview_colors(image, color1, color2, color3, base_color)
-    image = cv2.resize(image, (x, y))
-    cv2.imshow("Processed Image", cv2.convertScaleAbs(image))
+    image = cv2.convertScaleAbs(cv2.resize(image, (x, y)))
+    return image
+    """cv2.imshow("Processed Image", cv2.convertScaleAbs(image))
     cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    cv2.destroyAllWindows()"""

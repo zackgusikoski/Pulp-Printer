@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 from tools import get_sheet_dimensions
 from PIL import Image
+import math
 
 def rotate(input_image, sheet_size):
     # if width is greater than length, rotate 90 degrees, otherwise, return input image as is
@@ -48,10 +49,10 @@ def compress_image_standard(image, sheet_size, paint_drop_size):
 def compress_image_cv2(image, sheet_size, paint_drop_size, interpolation):
 
     x, y = get_sheet_dimensions(sheet_size)
-    print(image.shape, y/paint_drop_size, x/paint_drop_size)
+    #print(image.shape, y/paint_drop_size, x/paint_drop_size)
 
     image = cv2.resize(image, (int(x/paint_drop_size), int(y/paint_drop_size)), interpolation=interpolation)
-    print(len(image), len(image[0]))
+    #print(len(image), len(image[0]))
 
     return image
 
@@ -90,6 +91,72 @@ def separate_colors(image, num_colors):
         diff_results.append(diff_results_row)
     print(diff_results)
     return None
+
+def separate_colors_splitter(image, base_color):
+
+    if base_color != "NA":
+        num_colors = 4
+    else:
+        num_colors = 3
+
+
+    b, g, r = cv2.split(image)
+    colors = [b, g, r]
+    zeros = np.zeros(shape=(b.shape), dtype=np.uint8)
+
+    bgr = cv2.merge(colors)
+    bg = cv2.merge([colors[0], colors[1], zeros])
+    gr = cv2.merge([zeros, colors[1], colors[2]])
+    br = cv2.merge([colors[0], zeros, colors[2]])
+    color_combos = [bgr, bg, gr, br]
+
+    for color in color_combos:
+        colors.append(cv2.cvtColor(color, cv2.COLOR_BGR2GRAY))
+
+
+    for color in colors:
+        for y in range(len(color)):
+            for x in range(len(color[y])):
+                if 80 < color[y][x] <= 255:
+                    color[y][x] = 255
+                else:
+                    color[y][x] = 0
+
+    counts = []
+    for color in colors:
+        count = 0
+        for y in range(len(color)):
+            for x in range(len(color[y])):
+                if color[y][x] == 255:
+                    count += 1
+        counts.append(count)
+    
+
+    output = []
+    for i in range(len(colors)):
+        peak = max(counts[i:])
+
+        if len(output) == num_colors:
+            break
+
+        if counts[i] == peak:
+            output.append(colors[i])
+
+
+    color_fraction = num_colors
+    for color in output:
+        for y in range(len(color)):
+            for x in range(len(color[y])):
+                if color[y][x] == 255:
+                    color[y][x] = 255*color_fraction/num_colors
+        color_fraction -= 1
+
+
+    result = cv2.merge(output)
+
+
+
+    return cv2.cvtColor(result, cv2.COLOR_BGR2GRAY)
 
 def separate_colors_grayscale(image, shape, base_color):
     # convert from array to PIL image
@@ -147,7 +214,7 @@ def separate_colors_grayscale(image, shape, base_color):
 
     return output_image
 
-def processor(input_image, base_color, sheet_size: str, paint_drop_size: int, compression_type: str):
+def processor(input_image, base_color, sheet_size: str, paint_drop_size: int, compression_type: str, processor_type: str):
     #NOTE Standard will not be in the dropdown
     if compression_type == "Standard":
         image = separate_colors_grayscale(input_image, (input_image.shape[0], input_image.shape[1]), base_color)
@@ -158,27 +225,23 @@ def processor(input_image, base_color, sheet_size: str, paint_drop_size: int, co
 
     elif compression_type == "Linear":
         image = compress_image_cv2(input_image, sheet_size, paint_drop_size, cv2.INTER_LINEAR)
-        # convert to grayscale
-        image = separate_colors_grayscale(image, (image.shape[0], image.shape[1]), base_color)
     
     elif compression_type == "Cubic":
         image = compress_image_cv2(input_image, sheet_size, paint_drop_size, cv2.INTER_CUBIC)
-        # convert to grayscale
-        image = separate_colors_grayscale(image, (image.shape[0], image.shape[1]), base_color)
     
     elif compression_type == "Nearest":
         image = compress_image_cv2(input_image, sheet_size, paint_drop_size, cv2.INTER_NEAREST)
-        # convert to grayscale
-        image = separate_colors_grayscale(image, (image.shape[0], image.shape[1]), base_color)
     
     elif compression_type == "Area":
         image = compress_image_cv2(input_image, sheet_size, paint_drop_size, cv2.INTER_AREA)
-        # convert to grayscale
-        image = separate_colors_grayscale(image, (image.shape[0], image.shape[1]), base_color)
     
     elif compression_type == "Lanczos":
         image = compress_image_cv2(input_image, sheet_size, paint_drop_size, cv2.INTER_LANCZOS4)
-        # convert to grayscale
-        image = separate_colors_grayscale(image, (image.shape[0], image.shape[1]), base_color)
     
+    if processor_type == "Channels":
+        image = separate_colors_splitter(image, base_color)
+
+    elif processor_type == "Shades":
+        image = separate_colors_grayscale(image, (image.shape[0], image.shape[1]), base_color)
+
     return image
