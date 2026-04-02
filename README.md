@@ -1,2 +1,2 @@
-The image readers are a set of functions that will process an image input and return a G-Code file intended to work with the Pulp Printer that will print the image out into 3 colors 
-not including the color of the base paper. These functions will form the back-end of the GUI program to be unsed with the Pulp Printer.
+Pulp Paint is a program that will read any input image, reshape it (with user selecte techniques) to fit onto the size the machine can print, separate the image into 3 colors through the users choice of 2 techniques and return G-Code with a nearest neighbor path optimization to paint the image.
+The GUI allows for easy use and setup (which can be saved and loaded) as well as previews of the image after resizing and deposition locations according to the generated G-Code.
