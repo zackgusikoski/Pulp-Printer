@@ -13,5 +13,5 @@ There is a .zip folder of the newest version of Pulp Paint available in the Vers
 
 ## Generating EXE:
 1. Download .spec file
-2. Install pyinstaller 'pip install pyinstaller'
-3. Run 'pyinstaller.exe main.spec' from the folder the .spec file is in.
+2. Install pyinstaller `pip install pyinstaller`
+3. Run `pyinstaller.exe main.spec` from the folder the .spec file is in.
