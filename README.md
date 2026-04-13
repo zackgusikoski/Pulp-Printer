@@ -1,6 +1,6 @@
 <p align="center">
   <img src="Resources/GUI.jpg?raw=true" alt="GUI"
-    title="Pulp Paint" height=150 style="padding-right: 10px;"/>
+    title="Pulp Paint" height=350 style="padding-right: 10px;"/>
   <h1 align="center">Pulp Paint: Pulp Printer G-Code Generation Software</h1>
 </p>
 
